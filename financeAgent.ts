@@ -6,7 +6,7 @@ import {
   describeFinancialSummary,
   financeContextSchema,
   type FinanceContext,
-} from './finance';
+} from './finance.js';
 
 export type AgentIntent =
   | 'arithmetic'

@@ -8,8 +8,8 @@ import {
   calculateFinancialSummary,
   financeContextSchema,
   type FinanceContext,
-} from './finance';
-import { runFinanceAgent, type ReasoningService } from './financeAgent';
+} from './finance.js';
+import { runFinanceAgent, type ReasoningService } from './financeAgent.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
