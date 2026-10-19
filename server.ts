@@ -8,16 +8,19 @@ import {
   calculateFinancialSummary,
   financeContextSchema,
   type FinanceContext,
-} from './src/lib/finance';
-import { runFinanceAgent, type ReasoningService } from './server/financeAgent';
+} from './finance';
+import { runFinanceAgent, type ReasoningService } from './financeAgent';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
+const isVercel = Boolean(process.env.VERCEL);
 const parsedPort = Number.parseInt(process.env.PORT ?? '3000', 10);
 const PORT = Number.isInteger(parsedPort) && parsedPort > 0 && parsedPort <= 65535 ? parsedPort : 3000;
 const isProduction = process.env.NODE_ENV === 'production';
-const maximumReceiptBytes = 10 * 1024 * 1024;
+const maximumReceiptMegabytes = isVercel ? 3 : 10;
+const maximumReceiptBytes = maximumReceiptMegabytes * 1024 * 1024;
+const receiptSizeError = `Receipt image must be ${maximumReceiptMegabytes} MB or smaller.`;
 const acceptedImageTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const receiptResultSchema = z.object({
   merchant: z.string().trim().min(1).max(200),
@@ -25,7 +28,7 @@ const receiptResultSchema = z.object({
   category: z.string().trim().min(1).max(80),
 });
 
-app.use(express.json({ limit: '15mb' }));
+app.use(express.json({ limit: isVercel ? '4.25mb' : '15mb' }));
 app.use(cors());
 export { app };
 
@@ -116,7 +119,7 @@ app.post('/api/receipt', async (request, response) => {
     return response.status(400).json({ error: 'Receipt image must be JPEG, PNG, or WebP.' });
   }
   if (base64Image.length > Math.ceil(maximumReceiptBytes * 4 / 3)) {
-    return response.status(413).json({ error: 'Receipt image must be 10 MB or smaller.' });
+    return response.status(413).json({ error: receiptSizeError });
   }
   if (!/^[A-Za-z0-9+/]+={0,2}$/.test(base64Image) || base64Image.length % 4 !== 0) {
     return response.status(400).json({ error: 'Receipt image data is invalid.' });
@@ -124,7 +127,7 @@ app.post('/api/receipt', async (request, response) => {
   const image = Buffer.from(base64Image, 'base64');
   if (image.length === 0 || image.length > maximumReceiptBytes) {
     return response.status(image.length > maximumReceiptBytes ? 413 : 400).json({
-      error: image.length > maximumReceiptBytes ? 'Receipt image must be 10 MB or smaller.' : 'Receipt image data is invalid.',
+      error: image.length > maximumReceiptBytes ? receiptSizeError : 'Receipt image data is invalid.',
     });
   }
 
@@ -179,7 +182,7 @@ const errorHandler: ErrorRequestHandler = (error, _request, response, _next) => 
   response.status(500).json({ error: 'The server could not process this request.' });
 };
 
-if (isProduction && !process.env.VERCEL) {
+if (isProduction && !isVercel) {
   app.use(express.static(path.resolve(__dirname, 'dist')));
   app.get('*', (_request, response) => {
     response.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
@@ -194,7 +197,7 @@ async function startServer() {
   });
 }
 
-if (process.env.NODE_ENV !== 'test' && !process.env.VERCEL) {
+if (process.env.NODE_ENV !== 'test' && !isVercel) {
   startServer().catch(error => {
     console.error('Failed to start FinAgent server:', error);
     process.exitCode = 1;
