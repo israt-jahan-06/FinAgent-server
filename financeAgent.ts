@@ -260,13 +260,18 @@ export async function runFinanceAgent(
     { context: { reasoningService } }
   );
   const summary = calculateFinancialSummary(context);
+  const budgetStatus = context.monthlyIncome > 0 && summary.expenses > context.monthlyIncome
+    ? 'Over Budget'
+    : context.monthlyIncome > 0 && summary.expenses >= context.monthlyIncome * 0.8
+      ? 'Nearing Limit'
+      : 'On Track';
   return {
     ai_reply: result.reply,
     intent: result.intent,
     total_balance: context.totalBalance,
-    budget_status: summary.utilizationPercent > 30 ? 'Review Utilization' : 'On Track',
+    budget_status: budgetStatus,
     category_breakdown: summary.categorySpending,
-    upcoming_bills: context.bills,
+    upcoming_bills: context.bills.filter(bill => !bill.paid),
     portfolio_health: `Card utilization: ${summary.utilizationPercent.toFixed(1)}%`,
     ...(result.error ? { error: result.error } : {}),
   };
