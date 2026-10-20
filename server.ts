@@ -46,7 +46,7 @@ function createReasoningService(ai: GoogleGenAI): ReasoningService {
   return async (message: string, context: FinanceContext) => {
     const summary = calculateFinancialSummary(context);
     const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
+      model: 'gemini-3.5-flash-lite',
       contents: [
         'You are FinAgent, a careful personal-finance assistant. Answer the user natural-language question with practical, nonjudgmental guidance.',
         'Never perform arithmetic or invent values. If the question asks for a calculation, say calculations are handled by FinAgent tools and use only the supplied verified summary.',
@@ -139,7 +139,7 @@ app.post('/api/receipt', async (request, response) => {
 
   try {
     const result = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
+      model: 'gemini-3.5-flash-lite',
       contents: {
         parts: [
           { inlineData: { mimeType, data: base64Image } },
